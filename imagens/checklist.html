@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Ferramentas - Multi-Tenant</title>
+<title>Controle de Ferramentas</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-/* --- ESTILOS GERAIS E CABEÇALHO (Melhoria do 65.html) --- */
 body { font-family: Arial; margin:0; background:#f0f2f5; }
 header {
     background:#007bff;
@@ -75,13 +74,13 @@ li button { margin-left:10px; }
 </style>
 </head>
 <body>
-<header>
+<header style="display: flex; align-items: center;">
 
     <div style="flex: 1;"></div> 
 
     <div style="display: flex; align-items: center; flex: 1; justify-content: center;"> 
         <img src="logos/logo.png" alt="Logomarca" id="header-logo">
-        <span style="font-weight: bold; font-size: 1.2em; margin-left: 10px;">ControlCheck</span>
+        <span style="font-weight: bold; font-size: 1.2em; white-space: nowrap; margin-left: 10px;">ControlCheck</span>
     </div>
     
     <div style="flex: 1; display: flex; justify-content: flex-end;">
@@ -229,7 +228,7 @@ window.fazerLogout = async function() {
     if (error) console.error('Erro ao fazer logout:', error.message);
 };
 
-// === FUNÇÃO CRÍTICA DO FLUXO MULTI-TENANCY ===
+// === FUNÇÃO CORRIGIDA PARA FLUXO E MENSAGENS CLARAS ===
 async function handleAuthStateChange(event, session) {
     const loginScreen = document.getElementById('login-screen');
     const appContainer = document.getElementById('app-container');
@@ -243,6 +242,7 @@ async function handleAuthStateChange(event, session) {
             .eq('id', session.user.id)
             .single();
 
+        // *** VERIFICAÇÃO CRÍTICA ***
         if (perfilError) {
             console.error("Erro ao buscar perfil:", perfilError);
             alert("ERRO RLS/PERFIL: Falha ao ler o perfil. Mensagem: " + perfilError.message);
@@ -250,6 +250,7 @@ async function handleAuthStateChange(event, session) {
             return;
         }
         if (!perfil || !perfil.id_empresa) {
+             // Indica que o RLS permitiu a leitura, mas o DADO 'id_empresa' está faltando
             alert("ERRO DE DADOS: Usuário logado, mas sem ID de Empresa vinculado na tabela 'perfis'. Verifique o banco de dados!");
             supabase.auth.signOut(); 
             return;
@@ -283,7 +284,7 @@ async function handleAuthStateChange(event, session) {
         appContainer.classList.remove('hidden');
         logoutBtn.classList.remove('hidden');
         
-        // Carrega os dados (RLS fará o filtro automático)
+        // Carrega os dados
         carregarLocais(); 
         carregarUsuarios();
         carregarFerramentas(); 
@@ -719,7 +720,6 @@ async function carregarRelatorios(){
 // =======================================================
 // ====================== PDF ============================
 // =======================================================
-// Esta função é a melhoria completa de geração de PDF do 65.html
 
 window.gerarPDFChecklist=async function(checklistId){
   const { jsPDF } = window.jspdf;
@@ -735,7 +735,7 @@ window.gerarPDFChecklist=async function(checklistId){
   if(locais.length === 0) await carregarLocais(); 
   if(ferramentas.length===0) await carregarFerramentas();
   
-  // Buscar nome da empresa (Adicionado para Multi-Tenancy)
+  // Buscar nome da empresa
   const nomeEmpresaData = await supabase.from('empresas').select('nome').eq('id', ck.id_empresa).single();
   const nomeEmpresa = nomeEmpresaData.data?.nome || 'N/A';
   
@@ -786,7 +786,7 @@ window.gerarPDFChecklist=async function(checklistId){
     if(y>700){ doc.addPage(); y=60; }
   }
 
-  // --- Adicionar Fotos no PDF ---
+  // --- Adicionar Fotos no PDF (Código de Imagem Inalterado) ---
   const imgWidth = 240; 
   const imgHeight = 160; 
   const imgSpacing = 20; 
