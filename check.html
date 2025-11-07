@@ -8,18 +8,24 @@
 <style>
 /* Estilos Essenciais para o Checklist */
 body { font-family: Arial; margin:0; background:#f0f2f5; }
+
+/* 1. REGRA 'header' MODIFICADA PARA CENTRALIZAR */
 header {
     background:#007bff;
     color:white;
     padding:20px;
     font-size:20px;
-
+    /* Adicionado para centralizar */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
+/* 2. REGRA '#header-logo' MODIFICADA (removida margin-right) */
 #header-logo {
-    height: 80px; /* Ajuste a altura da logo conforme necessário */
+    height: 80px; /* Tamanho original mantido */
     width: auto;
-    margin-right: 10px; /* Espaçamento entre a logo e o texto */
+    /* margin-right: 10px; <-- Removido daqui */
 }
 .container { padding:10px; max-width: 600px; margin: 20px auto; background: white; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 h2 { color: #007bff; text-align: center; }
@@ -48,29 +54,47 @@ video { border-radius:10px; margin-top:10px; width:100%; max-width:300px; displa
 .foto-preview { width:100%; max-width:300px; margin-top:10px; display:block; border:2px solid green; border-radius:10px; }
 .foto-confirm { color:green; font-weight:bold; display:none; }
 
-/* Lista de Ferramentas */
-#listaFerramentas div { 
-    border-bottom: 1px solid #ccc; 
-    padding: 5px 0; 
-    display: flex; 
-    align-items: center; 
+/* 3. REGRAS ADICIONADAS para agrupar e estilizar o conteúdo do header */
+.header-content {
+    display: flex;
+    align-items: center;
 }
-#listaFerramentas label { 
-    margin-left: 5px; 
-    font-weight: normal; 
+.header-content span {
+    font-weight: bold;
+    font-size: 1.2em; /* Tamanho original mantido */
+    white-space: nowrap;
+    margin-left: 10px; /* Espaçamento mantido */
+}
+
+/* === NOVA REGRA CSS PARA O BOTÃO DE TROCAR CÂMERA === */
+#trocarCamera {
+    background: #007bff;
+    color: white;
+    width: auto; /* Tamanho automático */
+    padding: 8px 12px;
+    margin-bottom: 10px; /* Espaço antes do vídeo */
+    margin-top: 0;
+}
+
+/* 4. REGRA ADICIONADA para melhorar visualização mobile */
+@media (max-width: 600px) {
+    .container {
+        margin: 0;
+        padding-top: 10px;
+        padding-bottom: 20px;
+        border-radius: 0;
+        box-shadow: none;
+    }
 }
 </style>
 </head>
 <body onload="carregarChecklist()">
-<header style="display: flex; align-items: center;">
 
-    <div style="flex: 1;"></div> 
-
-    <div style="display: flex; align-items: center; flex: 1; justify-content: center;"> 
-        <img src="logos\logo.png" alt="Logomarca" id="header-logo">
-        <span style="font-weight: bold; font-size: 1.2em; white-space: nowrap; margin-left: 10px;">ControlCheck</span>
+<header>
+    <div class="header-content">
+        <img src="logos/logo.png" alt="Logomarca" id="header-logo">
+        <span>ControlCheck</span>
     </div>
-   
 </header>
 
     <div id="checklist" class="container">
@@ -85,9 +109,11 @@ video { border-radius:10px; margin-top:10px; width:100%; max-width:300px; displa
         <div id="listaFerramentas"></div>
 
         <h3>Prévia da Câmera</h3>
+        
+        <button id="trocarCamera" onclick="trocarCamera()">Trocar Câmera</button>
+
         <div class="camera-control-area"> 
-            <video id="video" autoplay></video>
-            <div class="botoes-foto-container">
+            <video id="video" autoplay playsinline></video> <div class="botoes-foto-container">
                 <button onclick="tirarFoto('armario1')">Tirar Foto do Armário 1</button>
                 <button onclick="tirarFoto('armario2')">Tirar Foto do Armário 2</button>
             </div>
@@ -121,9 +147,13 @@ let fotoArmario1File = null;
 let fotoArmario2File = null; 
 let cameraAtiva = false;
 
+// === NOVAS VARIÁVEIS DE CÂMERA ===
+let currentStream = null; // Guarda a stream atual para podermos pará-la
+// Inicia com 'environment' (traseira) que é mais útil para checklist
+let currentFacingMode = 'environment'; 
+
 // =======================================================
 // === Funções de Carga Simplificadas para Teste ===
-// (Em um ambiente real, todas estas funções fariam RLS)
 // =======================================================
 
 async function carregarLocais(){
@@ -162,6 +192,50 @@ async function carregarFerramentas(){
     ferramentas = data || [];
 }
 
+// =======================================================
+// ===================== Lógica de Câmera ================
+// =======================================================
+
+// === NOVA FUNÇÃO PARA INICIAR A CÂMERA ===
+async function iniciarCamera(facingMode) {
+    // Para a stream de vídeo anterior, se estiver ativa
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => {
+            track.stop();
+        });
+    }
+
+    const video = document.getElementById('video');
+    const constraints = {
+        video: {
+            facingMode: facingMode 
+        }
+    };
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        currentStream = stream; // Salva a nova stream
+        currentFacingMode = facingMode; // Salva o modo atual
+    } catch (err) {
+        console.error('Erro ao iniciar câmera:', err);
+        // Se falhar (ex: 'environment' não existe no desktop), tenta a 'user'
+        if (facingMode !== 'user') {
+            console.warn('Falha ao abrir câmera ' + facingMode + ', tentando "user".');
+            iniciarCamera('user'); // Tenta a câmera frontal como fallback
+        } else {
+            alert('Não foi possível acessar a câmera. Verifique as permissões.');
+        }
+    }
+}
+
+// === NOVA FUNÇÃO PARA TROCAR A CÂMERA ===
+window.trocarCamera = function() {
+    // Alterna entre 'user' (frontal) e 'environment' (traseira)
+    const newFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+    iniciarCamera(newFacingMode);
+}
+
 
 // =======================================================
 // ===================== Checklist Lógica ================
@@ -175,17 +249,12 @@ window.carregarChecklist = async function(){
     // Inicializa a exibição de ferramentas (vazia até selecionar o local)
     filtrarFerramentasPorLocal(); 
 
-    // Ativa a Câmera
+    // === LÓGICA DE CÂMERA MODIFICADA ===
+    // Ativa a Câmera (só na primeira vez)
     if(!cameraAtiva){
         cameraAtiva = true;
-        const video=document.getElementById('video');
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({video:true})
-              .then(stream=>{ video.srcObject=stream; })
-              .catch(err=>console.error('Erro câmera:',err));
-        } else {
-            console.warn('Câmera não suportada neste navegador.');
-        }
+        // Inicia com a câmera traseira (environment) por padrão
+        iniciarCamera(currentFacingMode); 
     }
 }
 
