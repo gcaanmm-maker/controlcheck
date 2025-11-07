@@ -100,20 +100,28 @@ li button { margin-left:10px; }
 </style>
 </head>
 <body>
-<header>
-    <div style="width: 50px;"></div> <div style="display: flex; align-items: center;"> 
-        <img src="logo.png" alt="Logomarca" id="header-logo">
-        <span style="font-weight: bold; font-size: 1.2em; white-space: nowrap;">ControlCheck</span>
+<header style="display: flex; align-items: center;">
+
+    <div style="flex: 1;"></div> 
+
+    <div style="display: flex; align-items: center; flex: 1; justify-content: center;"> 
+        <img src="logos\logo.png" alt="Logomarca" id="header-logo">
+        <span style="font-weight: bold; font-size: 1.2em; white-space: nowrap; margin-left: 10px;">ControlCheck</span>
     </div>
     
-    <button id="logoutButton" onclick="fazerLogout()" style="padding:10px 20px; background:#dc3545; color:white; border:none; border-radius:20px; cursor:pointer;" class="hidden">Sair</button>
+    <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button id="logoutButton" onclick="fazerLogout()" style="padding:10px 20px; background:#dc3545; color:white; border:none; border-radius:20px; cursor:pointer; margin-right: 15px;" class="hidden">Sair</button>
+        </div>
+
 </header>
 <div id="login-screen" class="container">
+
     <h2>Acesso ao Sistema</h2>
     <input type="email" id="loginEmail" placeholder="Seu Email Master">
     <input type="password" id="loginPassword" placeholder="Sua Senha" style="margin-top:10px;">
     <button onclick="fazerLogin()" style="margin-top:15px; background:#28a745; color:white;">Acessar</button>
     <p style="margin-top: 15px; text-align: center;">*Para Master Login, use o email e senha fornecidos pela administração.</p>
+	
 </div>
 
 
