@@ -1,1 +1,857 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Ferramentas - Multi-Tenant</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* --- ESTILOS GERAIS E CABEÇALHO (Melhoria do 65.html) --- */
+body { font-family: Arial; margin:0; background:#f0f2f5; }
+header {
+    background:#007bff;
+    color:white;
+    padding:20px;
+    font-size:20px;
+    
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
 
+#header-logo {
+    height: 80px;
+    width: auto;
+    margin-right: 10px;
+}
+header span {
+    white-space: nowrap;
+}
+nav { display:flex; justify-content:space-around; background:#0056b3; }
+nav button { flex:1; padding:12px; border:none; background:#0056b3; color:white; font-size:16px; cursor:pointer; }
+nav button:hover { background:#003f7f; }
+.container { padding:10px; max-width: 600px; margin: 0 auto; }
+.card { background:white; padding:15px; margin:10px 0; border-radius:15px; box-shadow:0 2px 5px rgba(0,0,0,0.2); }
+.fotos-container { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 15px; 
+    margin-top: 15px;
+}
+.fotos-container > div {
+    flex: 1 1 280px; 
+    min-width: 250px;
+    max-width: 48%; 
+}
+.fotos-container img { max-width:100%; border-radius:10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.fotos-container h4 { margin-top: 0; margin-bottom: 5px; color: #0056b3; }
+.card img { margin-top:10px; border-radius:10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.faltando { color:red; font-weight:bold; font-size:16px; margin-top:5px; }
+ul { padding-left:0; list-style:none; }
+button { padding:8px 15px; border-radius:8px; margin-top:5px; cursor:pointer; }
+input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:5px; border:1px solid #ccc; box-sizing: border-box; }
+.hidden { display:none !important; }
+
+/* Estilos de Câmera e Botões */
+.camera-control-area { width: 100%; max-width: 300px; margin: 10px 0; }
+video { border-radius:10px; margin-top:10px; width:100%; max-width:300px; display:block; } 
+.botoes-foto-container { display: flex; gap: 10px; margin-top: 10px; }
+.botoes-foto-container button { flex: 1; padding: 10px; margin: 0; }
+.foto-preview { width:100%; max-width:300px; margin-top:10px; display:block; border:2px solid green; border-radius:10px; }
+.foto-confirm { color:green; font-weight:bold; display:none; }
+li { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ccc; padding:5px 0; }
+li button { margin-left:10px; }
+
+/* Estilos de Observação */
+#listaFerramentas > div { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: flex-start !important; 
+    border-bottom:1px solid #ccc; 
+    padding:5px 0;
+}
+#listaFerramentas > div > div { display: flex; align-items: center; }
+.obs-field { width: 99%; margin-top: 5px; margin-bottom: 5px; }
+</style>
+</head>
+<body>
+<header>
+
+    <div style="flex: 1;"></div> 
+
+    <div style="display: flex; align-items: center; flex: 1; justify-content: center;"> 
+        <img src="logos/logo.png" alt="Logomarca" id="header-logo">
+        <span style="font-weight: bold; font-size: 1.2em; margin-left: 10px;">ControlCheck</span>
+    </div>
+    
+    <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button id="logoutButton" onclick="fazerLogout()" style="padding:10px 20px; background:#dc3545; color:white; border:none; border-radius:20px; cursor:pointer; margin-right: 15px;" class="hidden">Sair</button>
+        </div>
+
+</header>
+<div id="login-screen" class="container">
+
+    <h2>Acesso ao Sistema</h2>
+    <input type="email" id="loginEmail" placeholder="Seu Email Master">
+    <input type="password" id="loginPassword" placeholder="Sua Senha" style="margin-top:10px;">
+    <button onclick="fazerLogin()" style="margin-top:15px; background:#28a745; color:white;">Acessar</button>
+    <p style="margin-top: 15px; text-align: center;">*Para Master Login, use o email e senha fornecidos pela administração.</p>
+	
+</div>
+
+
+<div id="app-container" class="hidden">
+    <nav>
+      <button onclick="mostrarTela('checklist')">Checklist</button>
+      <button onclick="mostrarTela('ferramentas')">Ferramentas</button>
+      <button onclick="mostrarTela('relatorios')">Relatórios</button>
+      <button onclick="mostrarTela('usuarios')">Usuários</button>
+      <button onclick="mostrarTela('locais')">Locais</button> 
+    </nav>
+    
+    <div class="container">
+      <div id="checklist" class="hidden">
+        <h2>Checklist Diário</h2>
+        
+        <label for="localChecklist">Local do Checklist:</label>
+        <select id="localChecklist" onchange="filtrarFerramentasPorLocal()"><option value="">Selecione o Local</option></select>
+        
+        <label for="responsavel">Responsável:</label>
+        <select id="responsavel"><option value="">Carregando...</option></select>
+
+        <div id="listaFerramentas"></div>
+
+        <h3>Prévia da Câmera</h3>
+        <div class="camera-control-area"> 
+            <video id="video" autoplay></video>
+            <div class="botoes-foto-container">
+                <button onclick="tirarFoto('armario1')">Tirar Foto do Armário 1</button>
+                <button onclick="tirarFoto('armario2')">Tirar Foto do Armário 2</button>
+            </div>
+        </div>
+        
+        <canvas id="canvas" width="300" height="200" style="display:none;"></canvas>
+        
+        <h4 style="margin-top: 20px;">Fotos Capturadas:</h4>
+        
+        <p id="confirmFoto1" class="foto-confirm">✅ Foto Armário 1 tirada!</p>
+        <img id="previewFoto1" class="foto-preview"/>
+
+        <p id="confirmFoto2" class="foto-confirm">✅ Foto Armário 2 tirada!</p>
+        <img id="previewFoto2" class="foto-preview"/>
+
+        <button onclick="finalizarChecklist()">Finalizar Checklist</button>
+      </div>
+      
+      <div id="ferramentas" class="hidden">
+        <h2>Adicionar Ferramenta</h2>
+        <input type="text" id="nomeFerramenta" placeholder="Nome da ferramenta">
+        <input type="text" id="descricaoFerramenta" placeholder="Descrição (opcional)">
+        
+        <label for="localizacaoFerramenta">Local de Uso/Armário:</label>
+        <select id="localizacaoFerramenta"><option value="">Selecione o Local</option></select>
+        
+        <button onclick="adicionarFerramenta()">Adicionar</button>
+        <h3>Lista de Ferramentas</h3>
+        <ul id="listaFerramentasCadastradas"></ul>
+      </div>
+
+      <div id="relatorios" class="hidden">
+        <h2>Relatórios</h2>
+        <button onclick="carregarRelatorios()">🔄 Atualizar Relatórios</button>
+        <div id="cardsRelatorios">Carregando...</div>
+      </div>
+
+      <div id="usuarios" class="hidden">
+        <h2>Gerenciar Usuários (Apenas para listagem interna da Empresa)</h2>
+        <h3>Adicionar Usuário</h3>
+        <input type="text" id="nomeUsuario" placeholder="Nome do usuário">
+        <button onclick="adicionarUsuario()">Adicionar</button>
+
+        <h3>Lista de Usuários</h3>
+        <ul id="listaUsuarios">Carregando...</ul>
+      </div>
+      
+      <div id="locais" class="hidden">
+        <h2>Gerenciar Locais de Checklist</h2>
+        <h3>Adicionar Novo Local</h3>
+        <input type="text" id="nomeLocal" placeholder="Ex: Armário da Obra A">
+        <input type="text" id="descricaoLocal" placeholder="Descrição (opcional)">
+        <button onclick="adicionarLocal()">Adicionar Local</button>
+
+        <h3>Lista de Locais Cadastrados</h3>
+        <ul id="listaLocais">Carregando...</ul>
+      </div>
+    </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+// ======= Supabase (Usando chave ANÔNIMA para segurança) =======
+const supabaseUrl = 'https://jyehccjogujkdtingplc.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWhjY2pvZ3Vqa2R0aW5ncGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzMDczODQsImV4cCI6MjA3Njg4MzM4NH0.1FHhPSRmZS2uw5f1tNqALeBqHMv4UfwmrGfnPBZsYME';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+let ferramentas = [];
+let usuarios = [];
+let locais = []; 
+let fotoArmario1File = null; 
+let fotoArmario2File = null; 
+let cameraAtiva = false;
+
+// === VARIÁVEL GLOBAL PARA MULTI-TENANCY ===
+window.currentEmpresaId = null; 
+
+
+// =======================================================
+// ==================== Autenticação =====================
+// =======================================================
+
+window.fazerLogin = async function() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+    if (!email || !password) return alert('Preencha email e senha.');
+
+    document.getElementById('loginPassword').blur(); 
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+        alert('Erro no login: ' + error.message);
+        document.getElementById('loginPassword').value = '';
+    }
+};
+
+window.fazerLogout = async function() {
+    if(!confirm('Deseja realmente sair do sistema?')) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Erro ao fazer logout:', error.message);
+};
+
+// === FUNÇÃO CRÍTICA DO FLUXO MULTI-TENANCY ===
+async function handleAuthStateChange(event, session) {
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
+    const logoutBtn = document.getElementById('logoutButton');
+    
+    if (session) {
+        
+        // 1. Busca o 'id_empresa' do perfil do usuário
+        const { data: perfil, error: perfilError } = await supabase.from('perfis')
+            .select('id_empresa')
+            .eq('id', session.user.id)
+            .single();
+
+        if (perfilError) {
+            console.error("Erro ao buscar perfil:", perfilError);
+            alert("ERRO RLS/PERFIL: Falha ao ler o perfil. Mensagem: " + perfilError.message);
+            supabase.auth.signOut(); 
+            return;
+        }
+        if (!perfil || !perfil.id_empresa) {
+            alert("ERRO DE DADOS: Usuário logado, mas sem ID de Empresa vinculado na tabela 'perfis'. Verifique o banco de dados!");
+            supabase.auth.signOut(); 
+            return;
+        }
+
+        // 2. Com o id_empresa, verifica se a licença está ativa
+        const { data: empresa, error: empresaError } = await supabase.from('empresas')
+            .select('licenca_ativa, nome')
+            .eq('id', perfil.id_empresa)
+            .single();
+
+        if (empresaError || !empresa) {
+             let msg = empresaError ? empresaError.message : "Empresa não encontrada ou RLS bloqueado.";
+             alert(`ERRO LICENÇA: ${msg}. Verifique o RLS da tabela 'empresas'.`);
+             supabase.auth.signOut();
+             return;
+        }
+
+        // 3. VERIFICAÇÃO DE LICENÇA ATIVA
+        if (empresa.licenca_ativa !== true) {
+            alert(`A licença para a empresa "${empresa.nome}" não está ativa. Contate o suporte.`);
+            supabase.auth.signOut();
+            return;
+        }
+        
+        // Armazena o ID da empresa globalmente
+        window.currentEmpresaId = perfil.id_empresa;
+
+        // Transição de tela
+        loginScreen.classList.add('hidden');
+        appContainer.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+        
+        // Carrega os dados (RLS fará o filtro automático)
+        carregarLocais(); 
+        carregarUsuarios();
+        carregarFerramentas(); 
+        carregarRelatorios();
+        
+        mostrarTela('checklist'); 
+        
+    } else {
+        // Usuário deslogado
+        loginScreen.classList.remove('hidden');
+        appContainer.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+        window.currentEmpresaId = null; 
+    }
+}
+
+// Inicia o listener de estado de autenticação
+supabase.auth.onAuthStateChange(handleAuthStateChange);
+
+
+// ======= Navegação =======
+window.mostrarTela = function(id){
+  if (!window.currentEmpresaId && id !== 'login-screen') {
+    alert('Erro de sessão. Faça login novamente.');
+    return;
+  }
+
+  ['checklist','ferramentas','relatorios','usuarios','locais'].forEach(t => document.getElementById(t).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  
+  if(id==='checklist') carregarChecklist();
+  if(id==='ferramentas') carregarFerramentas();
+  if(id==='relatorios') carregarRelatorios();
+  if(id==='usuarios') carregarUsuarios();
+  if(id==='locais') carregarLocais();
+};
+
+// =======================================================
+// ===================== LOCAIS ==========================
+// =======================================================
+
+async function carregarLocais(){
+    // O RLS filtra os dados aqui
+    const { data, error } = await supabase.from('locais_checklist').select('*').order('nome');
+    if(error) return console.error('Erro ao carregar locais:', error.message);
+    locais = data || [];
+
+    const ul = document.getElementById('listaLocais');
+    ul.innerHTML='';
+    if(locais.length===0){ ul.textContent='Nenhum local cadastrado.'; }
+    locais.forEach(l=>{
+        const li=document.createElement('li');
+        li.textContent=l.nome + (l.descricao ? ` (${l.descricao})` : '');
+        const btn=document.createElement('button');
+        btn.textContent='Remover';
+        btn.onclick=()=>removerLocal(l.id);
+        li.appendChild(btn);
+        ul.appendChild(li);
+    });
+
+    const selectChecklist = document.getElementById('localChecklist');
+    const selectFerramenta = document.getElementById('localizacaoFerramenta');
+    
+    [selectChecklist, selectFerramenta].forEach(select => {
+        const selectedValue = select.value;
+        select.innerHTML='<option value="">Selecione o Local</option>';
+        locais.forEach(l => {
+            const option=document.createElement('option');
+            option.value=l.id; 
+            option.textContent=l.nome;
+            select.appendChild(option);
+        });
+        select.value = selectedValue; 
+    });
+}
+
+window.adicionarLocal = async function(){
+    if (!window.currentEmpresaId) return alert('Faça login primeiro.');
+    const nome = document.getElementById('nomeLocal').value.trim();
+    const descricao = document.getElementById('descricaoLocal').value.trim();
+    if(!nome) return alert('Digite o nome do local');
+
+    const { error } = await supabase.from('locais_checklist').insert([
+        { nome, descricao, id_empresa: window.currentEmpresaId }
+    ]);
+    
+    if(error) return alert('Erro: '+error.message);
+    
+    alert('Local adicionado com sucesso!');
+    document.getElementById('nomeLocal').value='';
+    document.getElementById('descricaoLocal').value='';
+    carregarLocais();
+    carregarFerramentas(); 
+}
+
+async function removerLocal(id){
+    const { data: ferramentasNoLocal } = await supabase.from('ferramentas').select('id').eq('id_local', id);
+    if (ferramentasNoLocal && ferramentasNoLocal.length > 0) {
+        return alert('Impossível remover. Há ferramentas cadastradas neste local!');
+    }
+    
+    if(!confirm('Tem certeza que deseja remover este local?')) return;
+    const { error } = await supabase.from('locais_checklist').delete().eq('id', id);
+    if(error) return alert('Erro: '+error.message);
+    alert('Local removido!');
+    carregarLocais();
+}
+
+
+// =======================================================
+// ==================== Usuários =========================
+// =======================================================
+
+async function carregarUsuarios(){
+  const { data, error } = await supabase.from('usuarios').select('*').order('nome');
+  if(error) return alert('Erro ao carregar usuários: '+error.message);
+  usuarios = data || [];
+
+  const select = document.getElementById('responsavel');
+  select.innerHTML='<option value="">Selecione o responsável</option>';
+  usuarios.forEach(u=>{
+    const option=document.createElement('option');
+    option.value=u.nome;
+    option.textContent=u.nome;
+    select.appendChild(option);
+  });
+
+  const ul = document.getElementById('listaUsuarios');
+  ul.innerHTML='';
+  if(usuarios.length===0){ ul.textContent='Nenhum usuário cadastrado.'; return;}
+  usuarios.forEach(u=>{
+    const li=document.createElement('li');
+    li.textContent=u.nome;
+    const btn=document.createElement('button');
+    btn.textContent='Remover';
+    btn.onclick=()=>removerUsuario(u.id);
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+}
+
+window.adicionarUsuario = async function(){
+  if (!window.currentEmpresaId) return alert('Faça login primeiro.');
+  const nome = document.getElementById('nomeUsuario').value.trim();
+  if(!nome) return alert('Digite o nome do usuário');
+  
+  const { error } = await supabase.from('usuarios').insert([
+      { nome, id_empresa: window.currentEmpresaId }
+  ]);
+
+  if(error) return alert('Erro: '+error.message);
+  alert('Usuário adicionado com sucesso!');
+  document.getElementById('nomeUsuario').value='';
+  carregarUsuarios();
+}
+
+async function removerUsuario(id){
+  if(!confirm('Tem certeza que deseja remover este usuário?')) return;
+  const { error } = await supabase.from('usuarios').delete().eq('id', id);
+  if(error) return alert('Erro: '+error.message);
+  alert('Usuário removido!');
+  carregarUsuarios();
+}
+
+
+// =======================================================
+// =================== Ferramentas =======================
+// =======================================================
+
+async function carregarFerramentas(){
+  if(locais.length === 0) await carregarLocais(); 
+
+  const { data, error } = await supabase.from('ferramentas').select('*').order('nome');
+  if(error) return alert('Erro: '+error.message);
+  ferramentas = data || [];
+  
+  const ul = document.getElementById('listaFerramentasCadastradas');
+  ul.innerHTML='';
+  if(ferramentas.length===0){ ul.textContent='Nenhuma ferramenta cadastrada.'; }
+  ferramentas.forEach(f=>{
+    const li=document.createElement('li');
+    const nomeLocal = locais.find(l => l.id == f.id_local)?.nome || 'Sem Local'; 
+    
+    const span = document.createElement('span');
+    span.textContent=f.nome + (f.descricao ? ' - ' + f.descricao : '') + ` [Local: ${nomeLocal}]`; 
+    li.appendChild(span);
+
+    const btnRemover = document.createElement('button');
+    btnRemover.textContent='Remover';
+    btnRemover.onclick=async()=>{ 
+      if(!confirm('Deseja remover esta ferramenta?')) return;
+
+      const { error: delItensError } = await supabase.from('itens_checklist').delete().eq('id_ferramenta', f.id);
+      if(delItensError) return alert('Erro ao remover itens relacionados: ' + delItensError.message);
+
+      const { error } = await supabase.from('ferramentas').delete().eq('id', f.id);
+      if(error) return alert('Erro ao remover ferramenta: ' + error.message);
+
+      alert('Ferramenta removida com sucesso!');
+      carregarFerramentas(); 
+    };
+    li.appendChild(btnRemover);
+    ul.appendChild(li);
+  });
+}
+
+window.adicionarFerramenta = async function(){
+  if (!window.currentEmpresaId) return alert('Faça login primeiro.');
+  const nome=document.getElementById('nomeFerramenta').value;
+  const desc=document.getElementById('descricaoFerramenta').value;
+  const idLocal = document.getElementById('localizacaoFerramenta').value; 
+  if(!nome || !idLocal) return alert('Digite o nome da ferramenta e selecione o Local!');
+  
+  const { error } = await supabase.from('ferramentas').insert([
+      {nome, descricao:desc, id_local: idLocal, id_empresa: window.currentEmpresaId}
+  ]);
+
+  if(error) return alert('Erro: '+error.message);
+  
+  document.getElementById('nomeFerramenta').value='';
+  document.getElementById('descricaoFerramenta').value='';
+  document.getElementById('localizacaoFerramenta').value=''; 
+  carregarFerramentas();
+}
+
+
+// =======================================================
+// ===================== Checklist =======================
+// =======================================================
+
+async function carregarChecklist(){
+  if (!window.currentEmpresaId) return;
+  
+  await carregarUsuarios();
+  if(locais.length===0) await carregarLocais(); 
+  if(ferramentas.length===0) await carregarFerramentas();
+  
+  filtrarFerramentasPorLocal(); 
+
+  if(!cameraAtiva){
+    cameraAtiva = true;
+    const video=document.getElementById('video');
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({video:true})
+          .then(stream=>{ video.srcObject=stream; })
+          .catch(err=>console.error('Erro câmera:',err));
+    } else {
+        console.warn('Câmera não suportada neste navegador.');
+    }
+  }
+}
+
+window.filtrarFerramentasPorLocal = function() {
+    const container=document.getElementById('listaFerramentas');
+    container.innerHTML='';
+    const localId = document.getElementById('localChecklist').value;
+    
+    if (!localId) {
+        container.textContent = 'Selecione um local para ver as ferramentas.';
+        return;
+    }
+    const ferramentasFiltradas = ferramentas.filter(f => f.id_local == localId);
+
+    if (ferramentasFiltradas.length === 0) {
+         container.textContent = 'Nenhuma ferramenta cadastrada para este local.';
+    }
+
+    ferramentasFiltradas.forEach(f=>{
+        const div=document.createElement('div');
+        div.style.borderBottom='1px solid #ccc';
+        div.style.padding='5px 0';
+        div.innerHTML=`<input type="checkbox" id="f${f.id}" data-id="${f.id}" checked> <label for="f${f.id}">${f.nome}</label>`;
+        container.appendChild(div);
+    });
+};
+
+window.tirarFoto=function(armario){
+    const video=document.getElementById('video');
+    const canvas=document.getElementById('canvas');
+    const preview1=document.getElementById('previewFoto1');
+    const confirm1=document.getElementById('confirmFoto1');
+    const preview2=document.getElementById('previewFoto2');
+    const confirm2=document.getElementById('confirmFoto2');
+
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const dataURL=canvas.toDataURL('image/png');
+    
+    fetch(dataURL).then(r=>r.blob()).then(blob=>{
+        if(armario==='armario1'){
+            fotoArmario1File=new File([blob],`foto1_${Date.now()}.png`,{type:'image/png'});
+            preview1.src=dataURL;
+            preview1.style.display='block';
+            confirm1.style.display='block';
+        } else if(armario==='armario2'){
+            fotoArmario2File=new File([blob],`foto2_${Date.now()}.png`,{type:'image/png'});
+            preview2.src=dataURL;
+            preview2.style.display='block';
+            confirm2.style.display='block';
+        }
+    });
+};
+
+window.finalizarChecklist=async function(){
+    const responsavel=document.getElementById('responsavel').value;
+    const localId = document.getElementById('localChecklist').value; 
+    
+    if(!window.currentEmpresaId) return alert('Erro interno: Empresa não selecionada.');
+    if(!responsavel) return alert('Selecione o responsável');
+    if(!localId) return alert('Selecione o Local do Checklist!'); 
+    
+    if(!fotoArmario1File || !fotoArmario2File) return alert('É obrigatório tirar as duas fotos dos armários antes de finalizar.');
+
+    const dataLocal = new Date().toISOString(); 
+    
+    // --- 1. REGISTRA CHECKLIST (INCLUINDO ID DA EMPRESA) ---
+    const { data: ckInsert, error: ckError } = await supabase.from('checklists')
+        .insert([{ 
+            data: dataLocal, 
+            responsavel, 
+            id_local: localId,
+            id_empresa: window.currentEmpresaId
+        }])
+        .select('id');
+    if(ckError) return alert('Erro ao registrar checklist: '+ckError.message);
+    const ck=ckInsert[0];
+
+    let updateFields = {};
+
+    // --- 2. UPLOAD E UPDATE ---
+    const fotoPath1=`checklists/${ck.id}/foto1_${ck.id}.png`;
+    const { error: upError1 } = await supabase.storage.from('fotos').upload(fotoPath1, fotoArmario1File, {upsert:true});
+    if(!upError1) updateFields.foto_armario = fotoPath1;
+
+    const fotoPath2=`checklists/${ck.id}/foto2_${ck.id}.png`;
+    const { error: upError2 } = await supabase.storage.from('fotos').upload(fotoPath2, fotoArmario2File, {upsert:true});
+    if(!upError2) updateFields.foto_armario_2 = fotoPath2;
+
+    if(Object.keys(updateFields).length > 0) {
+        const { error: updateError } = await supabase.from('checklists').update(updateFields).eq('id',ck.id);
+        if(updateError) console.error('Erro ao atualizar fotos:', updateError.message);
+    }
+
+    // --- 5. REGISTRA STATUS DAS FERRAMENTAS ---
+    const ferramentasDoLocal = ferramentas.filter(f => f.id_local == localId);
+    
+    const statusItens=ferramentasDoLocal.map(f=>{
+        const check=document.querySelector(`#f${f.id}`);
+        const presente = check ? check.checked : false; 
+        return {id_checklist:ck.id,id_ferramenta:f.id,presente:presente};
+    });
+    
+    await supabase.from('itens_checklist').insert(statusItens);
+
+    // --- 6. LIMPEZA E FEEDBACK ---
+    alert('Checklist finalizado com sucesso! Dados e fotos registrados.');
+    
+    fotoArmario1File=null;
+    fotoArmario2File=null;
+    document.getElementById('previewFoto1').style.display='none';
+    document.getElementById('previewFoto2').style.display='none';
+    document.getElementById('confirmFoto1').style.display='none';
+    document.getElementById('confirmFoto2').style.display='none';
+    document.getElementById('responsavel').value = '';
+    document.getElementById('localChecklist').value = '';
+    filtrarFerramentasPorLocal();
+};
+
+
+// =======================================================
+// ==================== Relatórios =======================
+// =======================================================
+
+async function carregarRelatorios(){
+  const container=document.getElementById('cardsRelatorios');
+  container.innerHTML='Carregando...';
+  
+  if (!window.currentEmpresaId) { container.textContent = 'Faça login para ver os relatórios.'; return; }
+
+  if(locais.length === 0) await carregarLocais(); 
+  if(ferramentas.length===0) await carregarFerramentas();
+
+  // RLS filtra aqui automaticamente
+  const { data: checklists, error } = await supabase.from('checklists').select('*').order('id',{ascending:false});
+    
+  if(error){container.textContent='Erro: '+error.message; return;}
+  if(!checklists || checklists.length===0){container.textContent='Nenhum checklist encontrado.'; return;}
+  
+  container.innerHTML='';
+  for(let ck of checklists){
+    const { data: itens } = await supabase.from('itens_checklist').select('*').eq('id_checklist',ck.id);
+    const faltando=(itens||[]).filter(i=>!i.presente);
+    let fotoURL1='';
+    if(ck.foto_armario){
+      const { data } = supabase.storage.from('fotos').getPublicUrl(ck.foto_armario);
+      fotoURL1=data?.publicUrl||'';
+    }
+    let fotoURL2='';
+    if(ck.foto_armario_2){ 
+      const { data } = supabase.storage.from('fotos').getPublicUrl(ck.foto_armario_2);
+      fotoURL2=data?.publicUrl||'';
+    }
+
+    const nomeLocal = locais.find(l => l.id == ck.id_local)?.nome || 'Local Removido';
+    const dataBR = new Date(ck.data + 'Z').toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
+
+    const listaItens=(itens||[]).map(i=>{
+      const nome=ferramentas.find(f=>f.id===i.id_ferramenta)?.nome||'N/A';
+      return `<tr><td>${nome}</td><td>${i.presente?'✅ Presente':'❌ Ausente'}</td><td>${i.presente?'':'Faltando'}</td></tr>`;
+    }).join('');
+
+    const card=document.createElement('div');
+    card.className='card';
+    card.innerHTML=`
+      <strong>Local:</strong> ${nomeLocal}<br>
+      <strong>Responsável:</strong> ${ck.responsavel}<br>
+      <strong>Data:</strong> ${dataBR}<br>
+      <table style="width:100%; border-collapse:collapse; margin-top:5px;">
+        <tr style="background:#cce6ff; font-weight:bold;"><th>Ferramenta</th><th>Status</th><th>Observações</th></tr>
+        ${listaItens}
+      </table>
+      ${faltando.length>0?`<p class="faltando">⚠️ ${faltando.length} ferramenta(s) faltando!</p>`:''}
+      <div class="fotos-container">
+        ${fotoURL1?`<div><h4>Foto Armário 1</h4><img src="${fotoURL1}" alt="Foto do Armário 1"></div>`:''}
+        ${fotoURL2?`<div><h4>Foto Armário 2</h4><img src="${fotoURL2}" alt="Foto do Armário 2"></div>`:''}
+      </div>
+      <button onclick="gerarPDFChecklist(${ck.id})">📄 Gerar PDF</button>
+    `;
+    container.appendChild(card);
+  }
+}
+
+// =======================================================
+// ====================== PDF ============================
+// =======================================================
+// Esta função é a melhoria completa de geração de PDF do 65.html
+
+window.gerarPDFChecklist=async function(checklistId){
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF('p','pt','a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  let y = 60;
+  const lineHeight = 18;
+
+  const { data: ck } = await supabase.from('checklists').select('*').eq('id',checklistId).single();
+  const { data: itens } = await supabase.from('itens_checklist').select('*').eq('id_checklist',checklistId);
+  
+  if(locais.length === 0) await carregarLocais(); 
+  if(ferramentas.length===0) await carregarFerramentas();
+  
+  // Buscar nome da empresa (Adicionado para Multi-Tenancy)
+  const nomeEmpresaData = await supabase.from('empresas').select('nome').eq('id', ck.id_empresa).single();
+  const nomeEmpresa = nomeEmpresaData.data?.nome || 'N/A';
+  
+  const nomeLocal = locais.find(l => l.id == ck.id_local)?.nome || 'Local Removido';
+
+  doc.setFontSize(20); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+  doc.text("Checklist Diário - Relatório", pageWidth/2, 30, {align:'center'});
+
+  const dataBR = new Date(ck.data + 'Z').toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
+  
+  doc.setFontSize(12); doc.setFont('helvetica','bold');
+  doc.text(`Empresa: ${nomeEmpresa}`, margin, y); y+=lineHeight;
+  doc.text(`Local: ${nomeLocal}`, margin, y); y+=lineHeight;
+  doc.text(`Responsável: ${ck.responsavel}`, margin, y); y+=lineHeight;
+  doc.text(`Data: ${dataBR}`, margin, y); y+=lineHeight+5;
+
+  // --- Tabela de Itens ---
+  const colWidths = [180,100,200];
+  const headers = ['Ferramenta','Status','Observações'];
+  let x = margin;
+  doc.setFillColor(204,230,255);
+  for(let j=0;j<headers.length;j++){ doc.rect(x,y,colWidths[j],lineHeight,'FD'); x+=colWidths[j]; }
+  doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+  x=margin;
+  for(let j=0;j<headers.length;j++){ doc.text(headers[j],x+5,y+13); x+=colWidths[j]; }
+  y += lineHeight;
+
+  for(let i=0;i<itens.length;i++){
+    const item = itens[i];
+    const nome=ferramentas.find(f=>f.id===item.id_ferramenta)?.nome||'N/A';
+    const status = item.presente ? 'P - Presente' : 'A - Ausente'; 
+    const obs=item.presente?'':'Faltando';
+    x=margin;
+    const bgColor=i%2===0?250:245;
+    doc.setFillColor(bgColor,bgColor,bgColor);
+    doc.rect(x,y,colWidths[0],lineHeight,'FD');
+    doc.rect(x+colWidths[0],y,colWidths[1],lineHeight,'FD');
+    doc.rect(x+colWidths[0]+colWidths[1],y,colWidths[2],lineHeight,'FD');
+    doc.setFont('helvetica','normal'); doc.setTextColor(0,0,0);
+    doc.text(nome,x+5,y+13);
+    doc.text(status,x+5+colWidths[0],y+13);
+    doc.text(obs,x+5+colWidths[0]+colWidths[1],y+13);
+
+    doc.setDrawColor(180,180,180); doc.setLineWidth(0.5);
+    doc.line(margin, y+lineHeight, margin+colWidths[0]+colWidths[1]+colWidths[2], y+lineHeight);
+
+    y += lineHeight;
+    if(y>700){ doc.addPage(); y=60; }
+  }
+
+  // --- Adicionar Fotos no PDF ---
+  const imgWidth = 240; 
+  const imgHeight = 160; 
+  const imgSpacing = 20; 
+  
+  y += 20; 
+
+  let foto1Loaded = false;
+  let foto2Loaded = false;
+  let img1, img2;
+
+  if(ck.foto_armario){
+    const { data } = supabase.storage.from('fotos').getPublicUrl(ck.foto_armario);
+    if(data?.publicUrl){
+      img1 = new Image();
+      img1.crossOrigin="anonymous";
+      img1.src = data.publicUrl;
+      await new Promise(res=>{ img1.onload=()=>{ foto1Loaded=true; res(); }; });
+    }
+  }
+  if(ck.foto_armario_2){
+    const { data } = supabase.storage.from('fotos').getPublicUrl(ck.foto_armario_2);
+    if(data?.publicUrl){
+      img2 = new Image();
+      img2.crossOrigin="anonymous";
+      img2.src = data.publicUrl;
+      await new Promise(res=>{ img2.onload=()=>{ foto2Loaded=true; res(); }; });
+    }
+  }
+
+  if(foto1Loaded && foto2Loaded){
+    const startX1 = margin;
+    const startX2 = margin + imgWidth + imgSpacing;
+    
+    if (startX2 + imgWidth <= pageWidth - margin) {
+      doc.setFontSize(10); doc.setFont('helvetica','bold');
+      doc.text('Foto Armário 1:', startX1, y);
+      doc.addImage(img1,'PNG',startX1,y + lineHeight/2,imgWidth,imgHeight);
+      doc.text('Foto Armário 2:', startX2, y);
+      doc.addImage(img2,'PNG',startX2,y + lineHeight/2,imgWidth,imgHeight);
+      y += imgHeight + lineHeight + 15; 
+    } else { 
+      doc.setFontSize(10); doc.setFont('helvetica','bold');
+      doc.text('Foto Armário 1:', margin, y);
+      doc.addImage(img1,'PNG',margin,y + lineHeight/2,imgWidth,imgHeight);
+      y += imgHeight + lineHeight + 15; 
+
+      if (y > 700) { doc.addPage(); y = 60; } 
+      doc.text('Foto Armário 2:', margin, y);
+      doc.addImage(img2,'PNG',margin,y + lineHeight/2,imgWidth,imgHeight);
+      y += imgHeight + lineHeight + 15;
+    }
+  } else if (foto1Loaded) {
+    doc.setFontSize(10); doc.setFont('helvetica','bold');
+    doc.text('Foto Armário 1:', margin, y);
+    doc.addImage(img1,'PNG',margin,y + lineHeight/2,imgWidth,imgHeight);
+    y += imgHeight + lineHeight + 15;
+  } else if (foto2Loaded) { 
+    doc.setFontSize(10); doc.setFont('helvetica','bold');
+    doc.text('Foto Armário 2:', margin, y);
+    doc.addImage(img2,'PNG',margin,y + lineHeight/2,imgWidth,imgHeight);
+    y += imgHeight + lineHeight + 15;
+  }
+
+  doc.save(`checklist_${ck.id}_${nomeEmpresa}.pdf`);
+};
+</script>
+</body>
+</html>
