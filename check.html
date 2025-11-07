@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Checklist Diário</title>
+<title>Checklist Diário de Ferramentas</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* Estilos Essenciais para o Checklist */
@@ -30,7 +30,7 @@ header {
 .container { padding:10px; max-width: 600px; margin: 20px auto; background: white; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 h2 { color: #007bff; text-align: center; }
 label { display: block; margin-top: 10px; font-weight: bold; }
-input[type="text"], select { width:100%; padding:8px; margin:5px 0 15px 0; border-radius:5px; border:1px solid #ccc; box-sizing: border-box; }
+input[type="text"], select, textarea { width:100%; padding:8px; margin:5px 0 15px 0; border-radius:5px; border:1px solid #ccc; box-sizing: border-box; }
 button { padding:10px 15px; border-radius:8px; margin-top:15px; cursor:pointer; background:#28a745; color:white; border:none; width: 100%; }
 button:hover { background:#1e7e34; }
 
@@ -86,13 +86,40 @@ video { border-radius:10px; margin-top:10px; width:100%; max-width:300px; displa
         box-shadow: none;
     }
 }
+
+/* === INÍCIO: NOVOS ESTILOS (OBSERVAÇÃO) === */
+.hidden { display:none !important; }
+
+/* Regra modificada para lista de ferramentas */
+#listaFerramentas > div { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: flex-start !important; 
+    border-bottom:1px solid #ccc; 
+    padding:5px 0;
+}
+#listaFerramentas > div > div {
+    display: flex;
+    align-items: center;
+}
+#listaFerramentas label { 
+    margin-left: 5px; 
+    font-weight: normal; 
+}
+.obs-field {
+    width: 99%;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+/* === FIM: NOVOS ESTILOS (OBSERVAÇÃO) === */
+
 </style>
 </head>
 <body onload="carregarChecklist()">
 
 <header>
     <div class="header-content">
-       <img src="imagens\logo.png" alt="Logomarca" id="header-logo">
+        <img src="logos/logo.png" alt="Logomarca" id="header-logo">
         <span>ControlCheck</span>
     </div>
 </header>
@@ -113,7 +140,8 @@ video { border-radius:10px; margin-top:10px; width:100%; max-width:300px; displa
         <button id="trocarCamera" onclick="trocarCamera()">Trocar Câmera</button>
 
         <div class="camera-control-area"> 
-            <video id="video" autoplay playsinline></video> <div class="botoes-foto-container">
+            <video id="video" autoplay playsinline></video>
+            <div class="botoes-foto-container">
                 <button onclick="tirarFoto('armario1')">Tirar Foto do Armário 1</button>
                 <button onclick="tirarFoto('armario2')">Tirar Foto do Armário 2</button>
             </div>
@@ -137,6 +165,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // ======= Supabase (Chaves Anônimas) =======
 const supabaseUrl = 'https://jyehccjogujkdtingplc.supabase.co';
+// === CHAVE CORRIGIDA (O ERRO ESTAVA AQUI) ===
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWhjY2pvZ3Vqa2R0aW5ncGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzMDczODQsImV4cCI6MjA3Njg4MzM4NH0.1FHhPSRmZS2uw5f1tNqALeBqHMv4UfwmrGfnPBZsYME';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -148,8 +177,7 @@ let fotoArmario2File = null;
 let cameraAtiva = false;
 
 // === NOVAS VARIÁVEIS DE CÂMERA ===
-let currentStream = null; // Guarda a stream atual para podermos pará-la
-// Inicia com 'environment' (traseira) que é mais útil para checklist
+let currentStream = null; 
 let currentFacingMode = 'environment'; 
 
 // =======================================================
@@ -196,9 +224,7 @@ async function carregarFerramentas(){
 // ===================== Lógica de Câmera ================
 // =======================================================
 
-// === NOVA FUNÇÃO PARA INICIAR A CÂMERA ===
 async function iniciarCamera(facingMode) {
-    // Para a stream de vídeo anterior, se estiver ativa
     if (currentStream) {
         currentStream.getTracks().forEach(track => {
             track.stop();
@@ -215,23 +241,20 @@ async function iniciarCamera(facingMode) {
     try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
-        currentStream = stream; // Salva a nova stream
-        currentFacingMode = facingMode; // Salva o modo atual
+        currentStream = stream; 
+        currentFacingMode = facingMode; 
     } catch (err) {
         console.error('Erro ao iniciar câmera:', err);
-        // Se falhar (ex: 'environment' não existe no desktop), tenta a 'user'
         if (facingMode !== 'user') {
             console.warn('Falha ao abrir câmera ' + facingMode + ', tentando "user".');
-            iniciarCamera('user'); // Tenta a câmera frontal como fallback
+            iniciarCamera('user'); 
         } else {
             alert('Não foi possível acessar a câmera. Verifique as permissões.');
         }
     }
 }
 
-// === NOVA FUNÇÃO PARA TROCAR A CÂMERA ===
 window.trocarCamera = function() {
-    // Alterna entre 'user' (frontal) e 'environment' (traseira)
     const newFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
     iniciarCamera(newFacingMode);
 }
@@ -246,18 +269,15 @@ window.carregarChecklist = async function(){
     await carregarLocais(); 
     await carregarFerramentas();
     
-    // Inicializa a exibição de ferramentas (vazia até selecionar o local)
     filtrarFerramentasPorLocal(); 
 
-    // === LÓGICA DE CÂMERA MODIFICADA ===
-    // Ativa a Câmera (só na primeira vez)
     if(!cameraAtiva){
         cameraAtiva = true;
-        // Inicia com a câmera traseira (environment) por padrão
         iniciarCamera(currentFacingMode); 
     }
 }
 
+// === FUNÇÃO MODIFICADA (OBSERVAÇÃO) ===
 window.filtrarFerramentasPorLocal = function() {
     const container=document.getElementById('listaFerramentas');
     container.innerHTML='';
@@ -276,10 +296,38 @@ window.filtrarFerramentasPorLocal = function() {
 
     ferramentasFiltradas.forEach(f=>{
         const div=document.createElement('div');
-        div.innerHTML=`<input type="checkbox" id="f${f.id}" data-id="${f.id}" checked> <label for="f${f.id}">${f.nome}</label>`;
+        
+        // IDs para o input e o textarea
+        const obsId = `obs${f.id}`;
+        const inputId = `f${f.id}`;
+
+        // Cria o HTML com o textarea oculto
+        div.innerHTML=`
+            <div>
+                <input type="checkbox" id="${inputId}" data-id="${f.id}" onchange="toggleObservacao('${obsId}')" checked> 
+                <label for="${inputId}">${f.nome}</label>
+            </div>
+            <textarea id="${obsId}" class="obs-field hidden" rows="2" placeholder="Observação (Ex: Ferramenta em conserto ou motivo da ausência)"></textarea>
+        `;
         container.appendChild(div);
     });
 };
+
+// === NOVA FUNÇÃO (OBSERVAÇÃO) ===
+// Mostra/esconde o campo de observação
+window.toggleObservacao = function(obsId) {
+    const checkbox = document.getElementById(obsId.replace('obs', 'f'));
+    const obsField = document.getElementById(obsId);
+    
+    // Se o item NÃO está presente (checkbox desmarcado), mostre o campo
+    if (!checkbox.checked) {
+        obsField.classList.remove('hidden');
+    } else {
+        obsField.classList.add('hidden');
+        obsField.value = ''; // Limpa o campo se for marcado como presente
+    }
+};
+
 
 window.tirarFoto=function(armario){
     const video=document.getElementById('video');
@@ -308,6 +356,7 @@ window.tirarFoto=function(armario){
     });
 };
 
+// === FUNÇÃO MODIFICADA (OBSERVAÇÃO) ===
 window.finalizarChecklist=async function(){
     const responsavel=document.getElementById('responsavel').value;
     const localId = document.getElementById('localChecklist').value; 
@@ -322,7 +371,7 @@ window.finalizarChecklist=async function(){
     // --- 1. REGISTRA CHECKLIST ---
     const { data: ckInsert, error: ckError } = await supabase.from('checklists')
         .insert([{ data: dataLocal, responsavel, id_local: localId }])
-        .select('id');
+        .select('id'); // Selecionar 'id' é suficiente
     if(ckError) return alert('Erro ao registrar checklist: '+ckError.message);
     const ck=ckInsert[0];
 
@@ -344,14 +393,23 @@ window.finalizarChecklist=async function(){
         if(updateError) console.error('Erro ao atualizar fotos:', updateError.message);
     }
 
-    // --- 5. REGISTRA STATUS DAS FERRAMENTAS ---
+    // --- 5. REGISTRA STATUS DAS FERRAMENTAS (COM OBSERVAÇÃO) ---
     const ferramentasDoLocal = ferramentas.filter(f => f.id_local == localId);
     
     const statusItens=ferramentasDoLocal.map(f=>{
         const check=document.querySelector(`#f${f.id}`);
-        // Se o checkbox não for encontrado ou não estiver marcado, é ausente (false)
-        const presente = check ? check.checked : false; 
-        return {id_checklist:ck.id,id_ferramenta:f.id,presente:presente};
+        const observacaoField = document.querySelector(`#obs${f.id}`); // Pega o campo de observação
+        
+        const isChecked = check ? check.checked : false;
+        // Salva a observação APENAS se o item NÃO estiver checado
+        const observacao = (observacaoField && !isChecked) ? observacaoField.value : null; 
+
+        return {
+            id_checklist: ck.id,
+            id_ferramenta: f.id,
+            presente: isChecked,
+            observacao: observacao // NOVO CAMPO
+        };
     });
     
     await supabase.from('itens_checklist').insert(statusItens);
@@ -368,7 +426,7 @@ window.finalizarChecklist=async function(){
     document.getElementById('confirmFoto2').style.display='none';
     document.getElementById('responsavel').value = '';
     document.getElementById('localChecklist').value = '';
-    filtrarFerramentasPorLocal();
+    filtrarFerramentasPorLocal(); // Limpa a lista de ferramentas
 };
 </script>
 </body>
